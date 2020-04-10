@@ -1297,7 +1297,7 @@ describe('optimistic mutation results', () => {
         client.watchQuery({ query }) as any as ObservableInput<any>,
       ).pipe(
         map(value => stripSymbols(value.data.todoList.todos)),
-        take(5),
+        take(4),
         toArray(),
       ).toPromise();
 
@@ -1320,9 +1320,9 @@ describe('optimistic mutation results', () => {
 
       const responses = await promise;
       const defaultTodos = stripSymbols(result.data.todoList.todos);
+
       expect(responses).toEqual([
         defaultTodos,
-        [customOptimisticResponse1.createTodo, ...defaultTodos],
         [
           customOptimisticResponse2.createTodo,
           customOptimisticResponse1.createTodo,
@@ -1776,7 +1776,7 @@ describe('optimistic mutation results', () => {
         client.watchQuery({ query }) as any as ObservableInput<any>,
       ).pipe(
         map(value => stripSymbols(value.data.todoList.todos)),
-        take(5),
+        take(4),
         toArray(),
       ).toPromise();
 
@@ -1798,7 +1798,6 @@ describe('optimistic mutation results', () => {
       const defaultTodos = stripSymbols(result.data.todoList.todos);
       expect(responses).toEqual([
         defaultTodos,
-        [customOptimisticResponse1.createTodo, ...defaultTodos],
         [
           customOptimisticResponse2.createTodo,
           customOptimisticResponse1.createTodo,
