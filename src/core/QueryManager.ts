@@ -872,7 +872,12 @@ export class QueryManager<TStore> {
       networkStatus,
     }).updateWatch(mutableOptions);
 
-    const readFromCache = () => queryInfo.getDiff();
+    const readFromCache = () => this.cache.diff<any>({
+      query,
+      variables,
+      returnPartialData: true,
+      optimistic: true,
+    });
 
     const readFromLink = (
       allowCacheWrite: boolean,
