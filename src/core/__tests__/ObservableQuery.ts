@@ -1147,7 +1147,7 @@ describe('ObservableQuery', () => {
       });
     });
 
-    itAsync('cache-and-network refetch should run @client(always: true) resolvers when network request fails', (resolve, reject) => {
+    itAsync.skip('cache-and-network refetch should run @client(always: true) resolvers when network request fails', (resolve, reject) => {
       const query = gql`
         query MixedQuery {
           counter @client(always: true)
