@@ -1109,11 +1109,23 @@ export class QueryManager<TStore> {
                 NetworkStatus.poll,
               ).then(poll, poll);
             } else {
-              this.fetchQuery(
+              const sub = this.fetchQueryObservable(
                 queryId,
                 info.options,
                 NetworkStatus.poll,
-              ).then(poll, poll);
+              ).subscribe({
+                next(result) {
+                  queryInfo.setDirty();
+                },
+                error(e) {
+                  sub.unsubscribe();
+                  poll();
+                },
+                complete() {
+                  sub.unsubscribe();
+                  poll();
+                },
+              });
             }
           }
         }
