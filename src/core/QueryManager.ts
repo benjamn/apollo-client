@@ -1128,23 +1128,14 @@ export class QueryManager<TStore> {
                 NetworkStatus.poll,
               ).then(poll, poll);
             } else {
-              const sub = this.fetchQueryObservable(
+              this.fetchQueryObservable(
                 queryId,
                 info.options,
                 NetworkStatus.poll,
-              ).subscribe({
-                next(result) {
-                  queryInfo.setDirty();
-                },
-                error(e) {
-                  sub.unsubscribe();
-                  poll();
-                },
-                complete() {
-                  sub.unsubscribe();
-                  poll();
-                },
-              });
+              ).promise.then(() => {
+                queryInfo.setDirty();
+                poll();
+              }, poll);
             }
           }
         }
