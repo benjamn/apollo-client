@@ -22,7 +22,6 @@ import {
 } from './watchQueryOptions';
 import { QueryStoreValue } from './QueryInfo';
 import { isNonEmptyArray } from '../utilities/common/arrays';
-import { toPromise } from '../utilities/observables/observables';
 
 export type ApolloCurrentQueryResult<T> = ApolloQueryResult<T> & {
   error?: ApolloError;
@@ -588,12 +587,10 @@ export class ObservableQuery<
       newNetworkStatus,
     );
 
-    const promise = toPromise(observable);
-
     if (this.activeSub) this.activeSub.unsubscribe();
     this.activeSub = observable.subscribe(this.observer);
 
-    return promise;
+    return observable.promise;
   }
 
   private observer: Observer<ApolloQueryResult<TData>> = {
