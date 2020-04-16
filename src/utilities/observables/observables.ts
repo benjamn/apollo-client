@@ -42,6 +42,12 @@ export class Concast<T> extends Observable<T> {
     // acceptable to pay no attention to this.promise if you're consuming
     // the results through the normal observable API.
     this.promise.catch(ignored => {});
+
+    // Calling this.handlers.complete() kicks off consumption of the first
+    // source observable. It's tempting to do this step lazily in
+    // addObserver, but this.promise can be accessed without calling
+    // addObserver, so consumption needs to begin eagerly.
+    this.handlers.complete!();
   }
 
   // Generic implementations of Observable.prototype methods like map and
@@ -68,39 +74,27 @@ export class Concast<T> extends Observable<T> {
       }
       this.observers.add(observer);
     }
-    this.ensureStarted();
   }
 
   private removeObserver(observer: Observer<T>) {
     if (this.observers.delete(observer) &&
-        this.observers.size < 1 &&
-        this.sub) {
-      this.sub.unsubscribe();
+        this.observers.size < 1) {
+      if (this.sub) {
+        this.sub.unsubscribe();
+        // In case anyone happens to be listening to this.promise, after
+        // this.observers has become empty.
+        this.reject(new Error("Observable cancelled prematurely"));
+      }
       this.sub = null;
-    }
-  }
-
-  private ensureStarted() {
-    if (this.sub === void 0) {
-      // Calling this.handlers.complete() kicks off consumption of the
-      // first source observable. We expect this.sub to refer to a
-      // non-null subscription object, or null if there were no source
-      // observables, after this.handlers.complete() returns, which is
-      // important for making sure this code runs only once.
-      this.handlers.complete!();
     }
   }
 
   // Any Concast object can be trivially converted to a Promise, without
   // having to create a new wrapper Observable. This promise provides an
   // easy way to observe the final state of the Concast.
-  public toPromise() {
-    this.ensureStarted();
-    return this.promise;
-  }
   private resolve: (result?: T) => void;
   private reject: (reason: any) => void;
-  private promise = new Promise<T>((resolve, reject) => {
+  public readonly promise = new Promise<T>((resolve, reject) => {
     this.resolve = resolve;
     this.reject = reject;
   });
