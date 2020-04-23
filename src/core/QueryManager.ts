@@ -892,18 +892,21 @@ export class QueryManager<TStore> {
     let fetchPolicy: WatchQueryFetchPolicy =
       mutableOptions.fetchPolicy || "cache-first";
 
-    const isNetworkFetchPolicy =
+    const mightUseNetwork =
+      fetchPolicy === "cache-first" ||
       fetchPolicy === "cache-and-network" ||
       fetchPolicy === "network-only" ||
       fetchPolicy === "no-cache";
 
     let shouldNotify = false;
-    if (isNetworkFetchPolicy &&
+    if (mightUseNetwork &&
         isNetworkRequestInFlight(networkStatus) &&
         typeof lastNetworkStatus === "number" &&
         lastNetworkStatus !== networkStatus &&
         mutableOptions.notifyOnNetworkStatusChange) {
-      fetchPolicy = "cache-and-network";
+      if (fetchPolicy !== "cache-first") {
+        fetchPolicy = "cache-and-network";
+      }
       shouldNotify = true;
     }
 
@@ -989,7 +992,7 @@ export class QueryManager<TStore> {
         );
       }
 
-      if (returnPartialData) {
+      if (returnPartialData || shouldNotify) {
         return finish(
           Observable.of({
             data: diff.result,
