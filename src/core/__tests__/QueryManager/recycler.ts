@@ -86,9 +86,8 @@ describe('Subscription lifecycles', () => {
 
         setTimeout(() => {
           // step 4, start new Subscription;
-          const recyled = resubscribe();
-          const currentResult = recyled.getCurrentResult();
-          expect(recyled.isTornDown).toEqual(false);
+          const recycled = resubscribe();
+          const currentResult = recycled.getCurrentResult();
           expect(stripSymbols(currentResult.data)).toEqual(initialData);
           done();
         }, 10);
