@@ -31,6 +31,8 @@ export class Reobserver<TData, TVars> {
       this.updatePolling();
     }
 
+    const concast = this.fetch(this.options, newNetworkStatus);
+
     if (this.concast) {
       // We use the {add,remove}Observer methods directly to avoid
       // wrapping observer with an unnecessary SubscriptionObserver
@@ -40,8 +42,6 @@ export class Reobserver<TData, TVars> {
       // may be awaiting this.concast.promise.
       this.concast.removeObserver(this.observer, true);
     }
-
-    const concast = this.fetch(this.options, newNetworkStatus);
 
     concast.addObserver(this.observer);
 
