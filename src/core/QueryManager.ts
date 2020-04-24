@@ -998,8 +998,6 @@ export class QueryManager<TStore> {
         );
       }
 
-      const linkObs = readFromLink(true);
-
       if (returnPartialData) {
         return finish(
           Observable.of({
@@ -1008,16 +1006,15 @@ export class QueryManager<TStore> {
             loading: true,
             networkStatus: queryInfo.networkStatus || NetworkStatus.loading,
           }),
-          linkObs,
+          readFromLink(true),
         );
       }
 
-      return finish(linkObs);
+      return finish(readFromLink(true));
     }
 
     case "cache-and-network": {
       const diff = readFromCache();
-      const linkObs = readFromLink(true);
 
       if (mutableOptions.fetchPolicy === "cache-and-network") {
         mutableOptions.fetchPolicy = "cache-first";
@@ -1030,11 +1027,11 @@ export class QueryManager<TStore> {
             loading: true,
             networkStatus: queryInfo.networkStatus || NetworkStatus.loading,
           }),
-          linkObs,
+          readFromLink(true),
         );
       }
 
-      return finish(linkObs);
+      return finish(readFromLink(true));
     }
 
     case "cache-only": {
