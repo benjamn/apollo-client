@@ -5,6 +5,8 @@ import { ApolloError } from '../errors';
 import { QueryInfo } from './QueryInfo';
 import { NetworkStatus } from './networkStatus';
 import { Resolver } from './LocalState';
+import { ObservableQuery } from './ObservableQuery';
+import { Cache } from '../cache';
 
 export { TypedDocumentNode } from '@graphql-typed-document-node/core';
 
@@ -12,6 +14,11 @@ export type PromiseResolveFunction<T> = (value?: T | PromiseLike<T>) => void;
 export type PromiseRejectFunction<T> = (value?: T | PromiseLike<T>) => void;
 
 export type QueryListener = (queryInfo: QueryInfo) => void;
+
+export type ReobserveQueryCallback = (
+  observableQuery: ObservableQuery,
+  diff: Cache.DiffResult<any>,
+) => void | Promise<any>;
 
 export type OperationVariables = Record<string, any>;
 

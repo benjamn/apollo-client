@@ -36,6 +36,7 @@ import {
   ApolloQueryResult,
   OperationVariables,
   MutationQueryReducer,
+  ReobserveQueryCallback,
 } from './types';
 import { LocalState } from './LocalState';
 
@@ -125,6 +126,7 @@ export class QueryManager<TStore> {
     refetchQueries = [],
     awaitRefetchQueries = false,
     update: updateWithProxyFn,
+    reobserveQuery,
     errorPolicy = 'none',
     fetchPolicy,
     context = {},
@@ -237,6 +239,7 @@ export class QueryManager<TStore> {
                 variables,
                 queryUpdatersById: generateUpdateQueriesInfo(),
                 update: updateWithProxyFn,
+                reobserveQuery,
               }, self.cache);
             } catch (e) {
               error = new ApolloError({
@@ -1079,9 +1082,8 @@ function markMutationResult<TStore, TData>(
     document: DocumentNode;
     variables: any;
     queryUpdatersById: Record<string, QueryWithUpdater>;
-    update:
-      ((cache: ApolloCache<TStore>, mutationResult: Object) => void) |
-      undefined;
+    update?: (cache: ApolloCache<TStore>, mutationResult: Object) => void;
+    reobserveQuery?: ReobserveQueryCallback;
   },
   cache: ApolloCache<TStore>,
 ) {
@@ -1145,8 +1147,8 @@ function markMutationResult<TStore, TData>(
         update(c, mutation.result);
       }
     }, {
-      // Non-optimistic transaction.
-      id: null,
+      id: null, // Non-optimistic transaction.
+      reobserveQuery: mutation.reobserveQuery,
     });
   }
 }

@@ -181,21 +181,40 @@ export class QueryInfo {
   public readonly observableQuery: ObservableQuery<any> | null = null;
 
   private oqListener: QueryListener = () => {
-    this.getDiff();
     const details = this.diffDetails;
     const oq = this.observableQuery;
     if (!oq) return;
 
-    if (details && details.optimistic) {
-      // If this.diff came from an optimistic transaction, deliver the
-      // current cache data to the ObservableQuery, but don't perform a
-      // full reobservation, since oq.reobserve might make a network
-      // request, and we don't want to trigger network requests for
-      // optimistic updates.
-      oq["observe"]();
-    } else {
-      oq.reobserve();
+    if (details) {
+      if (typeof details.reobserveQuery === "function") {
+        // Whoever triggers the broadcast may provide an arbitrary
+        // function for handling reobservation.
+        const { note } = this;
+        try {
+          const result = details.reobserveQuery(oq, this.getDiff());
+          if (note) note.resolve(result);
+        } catch (e) {
+          if (note) {
+            note.reject(e);
+          } else {
+            throw e;
+          }
+        }
+        return;
+      }
+
+      if (details.optimistic) {
+        // If this.diff came from an optimistic transaction, deliver the
+        // current cache data to the ObservableQuery, but don't perform
+        // a full reobservation, since oq.reobserve might make a network
+        // request, and we don't want to trigger network requests for
+        // optimistic updates.
+        oq["observe"]();
+        return;
+      }
     }
+
+    oq.reobserve();
   };
 
   setObservableQuery(oq: ObservableQuery<any> | null) {
