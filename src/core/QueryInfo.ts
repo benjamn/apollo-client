@@ -17,6 +17,7 @@ import {
   isNetworkRequestInFlight,
 } from './networkStatus';
 import { ApolloError } from '../errors';
+import { TransactionDetails } from '../cache/core/cache';
 
 export type QueryStoreValue = Pick<QueryInfo,
   | "variables"
@@ -129,6 +130,7 @@ export class QueryInfo {
   private notifyTimeout?: ReturnType<typeof setTimeout>;
 
   private diff: Cache.DiffResult<any> | null = null;
+  private diffDetails?: TransactionDetails;
 
   getDiff(variables = this.variables): Cache.DiffResult<any> {
     if (this.diff && equal(variables, this.variables)) {
@@ -145,9 +147,13 @@ export class QueryInfo {
     });
   }
 
-  setDiff(diff: Cache.DiffResult<any> | null) {
+  setDiff(
+    diff: Cache.DiffResult<any> | null,
+    details?: TransactionDetails,
+  ) {
     const oldDiff = this.diff;
     this.diff = diff;
+    this.diffDetails = details;
     if (!this.dirty &&
         (diff && diff.result) !== (oldDiff && oldDiff.result)) {
       this.dirty = true;
@@ -172,12 +178,14 @@ export class QueryInfo {
     if (oq) {
       oq["queryInfo"] = this;
       this.listeners.add(this.oqListener = () => {
-        // If this.diff came from an optimistic transaction, deliver the
-        // current cache data to the ObservableQuery, but don't perform a
-        // full reobservation, since oq.reobserve might make a network
-        // request, and we don't want to trigger network requests for
-        // optimistic updates.
-        if (this.getDiff().fromOptimisticTransaction) {
+        this.getDiff();
+        const details = this.diffDetails;
+        if (details && details.optimistic) {
+          // If this.diff came from an optimistic transaction, deliver the
+          // current cache data to the ObservableQuery, but don't perform
+          // a full reobservation, since oq.reobserve might make a network
+          // request, and we don't want to trigger network requests for
+          // optimistic updates.
           oq["observe"]();
         } else {
           oq.reobserve();
@@ -247,7 +255,7 @@ export class QueryInfo {
         query: this.document!,
         variables,
         optimistic: true,
-        callback: diff => this.setDiff(diff),
+        callback: (diff, details) => this.setDiff(diff, details),
       });
     }
   }

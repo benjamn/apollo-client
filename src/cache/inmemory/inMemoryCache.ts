@@ -4,7 +4,7 @@ import './fixPolyfills';
 import { DocumentNode } from 'graphql';
 import { dep, wrap } from 'optimism';
 
-import { ApolloCache } from '../core/cache';
+import { ApolloCache, TransactionDetails } from '../core/cache';
 import { Cache } from '../core/types/Cache';
 import {
   addTypenameToDocument,
@@ -261,7 +261,9 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
 
   public performTransaction(
     transaction: (cache: InMemoryCache) => any,
-    optimisticId?: string | null,
+    detailsOrId?:
+      | TransactionDetails
+      | TransactionDetails["id"],
   ) {
     const perform = (layer?: EntityStore) => {
       const { data, optimisticData } = this;
@@ -278,15 +280,17 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
       }
     };
 
-    let fromOptimisticTransaction = false;
+    const details: TransactionDetails =
+      typeof detailsOrId === "string" || detailsOrId === null
+        ? { id: detailsOrId }
+        : detailsOrId || {};
 
-    if (typeof optimisticId === 'string') {
+    if (typeof details.id === 'string') {
       // Note that there can be multiple layers with the same optimisticId.
       // When removeOptimistic(id) is called for that id, all matching layers
       // will be removed, and the remaining layers will be reapplied.
-      this.optimisticData = this.optimisticData.addLayer(optimisticId, perform);
-      fromOptimisticTransaction = true;
-    } else if (optimisticId === null) {
+      this.optimisticData = this.optimisticData.addLayer(details.id, perform);
+    } else if (details.id === null) {
       // Ensure both this.data and this.optimisticData refer to the root
       // (non-optimistic) layer of the cache during the transaction. Note
       // that this.data could be a Layer if we are currently executing an
@@ -300,7 +304,7 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
     }
 
     // This broadcast does nothing if this.txCount > 0.
-    this.broadcastWatches(fromOptimisticTransaction);
+    this.broadcastWatches(details);
   }
 
   public transformDocument(document: DocumentNode): DocumentNode {
@@ -319,17 +323,17 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
     return document;
   }
 
-  protected broadcastWatches(fromOptimisticTransaction?: boolean) {
+  protected broadcastWatches(details?: TransactionDetails) {
     if (!this.txCount) {
-      this.watches.forEach(c => this.maybeBroadcastWatch(c, fromOptimisticTransaction));
+      this.watches.forEach(c => this.maybeBroadcastWatch(c, details));
     }
   }
 
   private maybeBroadcastWatch = wrap((
     c: Cache.WatchOptions,
-    fromOptimisticTransaction?: boolean,
+    details?: TransactionDetails,
   ) => {
-    return this.broadcastWatch.call(this, c, !!fromOptimisticTransaction);
+    return this.broadcastWatch.call(this, c, details);
   }, {
     makeCacheKey: (c: Cache.WatchOptions) => {
       // Return a cache key (thus enabling result caching) only if we're
@@ -362,7 +366,7 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
   // the recomputation and the broadcast, in most cases.
   private broadcastWatch(
     c: Cache.WatchOptions,
-    fromOptimisticTransaction: boolean,
+    details?: TransactionDetails,
   ) {
     // First, invalidate any other maybeBroadcastWatch wrapper functions
     // currently depending on this Cache.WatchOptions object (including
@@ -387,10 +391,10 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
       optimistic: c.optimistic,
     });
 
-    if (c.optimistic && fromOptimisticTransaction) {
-      diff.fromOptimisticTransaction = true;
-    }
-
-    c.callback(diff);
+    c.callback(diff, {
+      ...details,
+      optimistic: c.optimistic &&
+        (details && typeof details.id === "string"),
+    });
   }
 }

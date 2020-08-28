@@ -1,8 +1,12 @@
 import { DataProxy } from './DataProxy';
 import { Modifier, Modifiers } from './common';
+import { TransactionDetails } from '../cache';
 
 export namespace Cache {
-  export type WatchCallback = (diff: Cache.DiffResult<any>) => void;
+  export type WatchCallback = (
+    diff: Cache.DiffResult<any>,
+    details?: TransactionDetails,
+  ) => void;
 
   export interface ReadOptions<TVariables = any, TData = any>
     extends DataProxy.Query<TVariables, TData> {

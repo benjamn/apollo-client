@@ -10,6 +10,11 @@ import { DataProxy } from './types/DataProxy';
 import { Cache } from './types/Cache';
 
 export type Transaction<T> = (c: ApolloCache<T>) => void;
+export interface TransactionDetails {
+  id?: string | null;
+  optimistic?: boolean;
+  [key: string]: any;
+};
 
 export abstract class ApolloCache<TSerialized> implements DataProxy {
   // required to implement
@@ -63,7 +68,9 @@ export abstract class ApolloCache<TSerialized> implements DataProxy {
     // (broadcast-batching) transactions. Passing null for optimisticId is
     // also allowed, and indicates that performTransaction should apply
     // the transaction non-optimistically (ignoring optimistic data).
-    optimisticId?: string | null,
+    optionsOrId?:
+      | TransactionDetails
+      | TransactionDetails["id"],
   ): void;
 
   public recordOptimisticTransaction(

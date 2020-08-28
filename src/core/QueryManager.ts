@@ -1144,6 +1144,9 @@ function markMutationResult<TStore, TData>(
       if (update) {
         update(c, mutation.result);
       }
-    }, /* non-optimistic transaction: */ null);
+    }, {
+      // Non-optimistic transaction.
+      id: null,
+    });
   }
 }
