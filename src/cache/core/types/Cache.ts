@@ -6,7 +6,7 @@ export namespace Cache {
   export type WatchCallback = (
     diff: Cache.DiffResult<any>,
     details?: TransactionDetails,
-  ) => void;
+  ) => any;
 
   export interface ReadOptions<TVariables = any, TData = any>
     extends DataProxy.Query<TVariables, TData> {

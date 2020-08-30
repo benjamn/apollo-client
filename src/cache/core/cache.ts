@@ -71,13 +71,18 @@ export abstract class ApolloCache<TSerialized> implements DataProxy {
     optionsOrId?:
       | TransactionDetails
       | TransactionDetails["id"],
-  ): void;
+    // Implementations are encouraged to return a Map from WatchOptions
+    // objects to callback results, representing the results of
+    // broadcasting changes from this transaction.
+  ): Map<Readonly<Cache.WatchOptions>,
+         ReturnType<Cache.WatchOptions["callback"]>>
+    | void;
 
   public recordOptimisticTransaction(
     transaction: Transaction<TSerialized>,
     optimisticId: string,
   ) {
-    this.performTransaction(transaction, optimisticId);
+    return this.performTransaction(transaction, optimisticId);
   }
 
   // Optional API

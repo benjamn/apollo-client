@@ -304,7 +304,7 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
     }
 
     // This broadcast does nothing if this.txCount > 0.
-    this.broadcastWatches(details);
+    return this.broadcastWatches(details);
   }
 
   public transformDocument(document: DocumentNode): DocumentNode {
@@ -325,15 +325,23 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
 
   protected broadcastWatches(details?: TransactionDetails) {
     if (!this.txCount) {
-      this.watches.forEach(c => this.maybeBroadcastWatch(c, details));
+      const resultMap = new Map<Readonly<Cache.WatchOptions>, any>();
+      this.watches.forEach(c => {
+        // Even if maybeBroadcastWatch does not perform a broadcast, we
+        // still report the most recent callback result for this watcher
+        // in resultMap, so no watched queries are skipped.
+        this.maybeBroadcastWatch(c, details, resultMap);
+      });
+      return resultMap;
     }
   }
 
   private maybeBroadcastWatch = wrap((
     c: Cache.WatchOptions,
     details?: TransactionDetails,
+    resultMap?: Map<Readonly<Cache.WatchOptions>, any>,
   ) => {
-    return this.broadcastWatch.call(this, c, details);
+    return this.broadcastWatch(c, details, resultMap);
   }, {
     makeCacheKey: (c: Cache.WatchOptions) => {
       // Return a cache key (thus enabling result caching) only if we're
@@ -367,6 +375,7 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
   private broadcastWatch(
     c: Cache.WatchOptions,
     details?: TransactionDetails,
+    resultMap?: Map<Readonly<Cache.WatchOptions>, any>,
   ) {
     // First, invalidate any other maybeBroadcastWatch wrapper functions
     // currently depending on this Cache.WatchOptions object (including
@@ -391,10 +400,17 @@ export class InMemoryCache extends ApolloCache<NormalizedCacheObject> {
       optimistic: c.optimistic,
     });
 
-    c.callback(diff, {
+    const result = c.callback(diff, {
       ...details,
-      optimistic: c.optimistic &&
-        (details && typeof details.id === "string"),
+      optimistic: (
+        c.optimistic &&
+        !!details &&
+        typeof details.id === "string"
+      ),
     });
+
+    if (resultMap) {
+      resultMap.set(c, result);
+    }
   }
 }
