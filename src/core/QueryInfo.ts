@@ -4,7 +4,11 @@ import { equal } from "@wry/equality";
 import { Cache, ApolloCache } from '../cache';
 import { WatchQueryOptions } from './watchQueryOptions';
 import { ObservableQuery } from './ObservableQuery';
-import { QueryListener } from './types';
+import {
+  QueryListener,
+  PromiseResolveFunction,
+  PromiseRejectFunction,
+} from './types';
 import { FetchResult } from '../link/core';
 import {
   ObservableSubscription,
@@ -25,6 +29,8 @@ export type QueryStoreValue = Pick<QueryInfo,
   | "networkError"
   | "graphQLErrors"
   >;
+
+type Note = Exclude<QueryInfo["note"], void>;
 
 const destructiveMethodCounts = new (
   canUseWeakMap ? WeakMap : Map
@@ -125,10 +131,6 @@ export class QueryInfo {
     return this;
   }
 
-  private dirty: boolean = false;
-
-  private notifyTimeout?: ReturnType<typeof setTimeout>;
-
   private diff: Cache.DiffResult<any> | null = null;
   private diffDetails?: TransactionDetails;
 
@@ -147,20 +149,33 @@ export class QueryInfo {
     });
   }
 
+  private note?: {
+    promise: Promise<any>;
+    resolve: PromiseResolveFunction<any>;
+    reject: PromiseRejectFunction<any>;
+    timeout: ReturnType<typeof setTimeout>;
+  };
+
   setDiff(
     diff: Cache.DiffResult<any> | null,
     details?: TransactionDetails,
-  ) {
+  ): Promise<any> {
     const oldDiff = this.diff;
     this.diff = diff;
     this.diffDetails = details;
-    if (!this.dirty &&
+
+    if (!this.note &&
         (diff && diff.result) !== (oldDiff && oldDiff.result)) {
-      this.dirty = true;
-      if (!this.notifyTimeout) {
-        this.notifyTimeout = setTimeout(() => this.notify(), 0);
-      }
+      const note: Partial<Note> = {};
+      note.promise = new Promise((resolve, reject) => {
+        note.resolve = resolve;
+        note.reject = reject;
+      });
+      note.timeout = setTimeout(this.notify, 10);
+      this.note = note as Note;
     }
+
+    return this.note ? this.note.promise : Promise.resolve();
   }
 
   public readonly observableQuery: ObservableQuery<any> | null = null;
@@ -196,21 +211,26 @@ export class QueryInfo {
     }
   }
 
-  notify() {
-    if (this.notifyTimeout) {
-      clearTimeout(this.notifyTimeout);
-      this.notifyTimeout = void 0;
-    }
+  notify = () => {
+    if (!this.shouldNotify()) return;
 
-    if (this.shouldNotify()) {
+    try {
       this.listeners.forEach(listener => listener(this));
+    } catch (e) {
+      if (this.note) {
+        this.note.reject(e);
+      }
     }
 
-    this.dirty = false;
+    if (this.note) {
+      clearTimeout(this.note.timeout);
+      this.note.resolve();
+      delete this.note;
+    }
   }
 
   private shouldNotify() {
-    if (!this.dirty || !this.listeners.size) {
+    if (!this.note || !this.listeners.size) {
       return false;
     }
 

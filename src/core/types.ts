@@ -8,6 +8,9 @@ import { Resolver } from './LocalState';
 
 export { TypedDocumentNode } from '@graphql-typed-document-node/core';
 
+export type PromiseResolveFunction<T> = (value?: T | PromiseLike<T>) => void;
+export type PromiseRejectFunction<T> = (value?: T | PromiseLike<T>) => void;
+
 export type QueryListener = (queryInfo: QueryInfo) => void;
 
 export type OperationVariables = Record<string, any>;
